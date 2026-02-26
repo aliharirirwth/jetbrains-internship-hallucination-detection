@@ -40,19 +40,45 @@ python scripts/02_preprocess.py
 
 ## Evaluation results (hallucination detector)
 
-Transfer matrix: train a probe on one dataset, evaluate on all (HaluEval, MedHallu, Med-HALT, MedHal). Example results below (opt-125m, 2k samples per dataset; Med-HALT has only one class so it is skipped as train set and AUROC is undefined when evaluating on it).
+Transfer matrix: train a probe on one dataset, evaluate on all (HaluEval, MedHallu, Med-HALT, MedHal). Med-HALT has only one class so it is skipped as train set; AUROC is undefined when evaluating on it.
 
-**Transfer matrix (AUROC and F1)**
+### Baseline: opt-125m (2k samples per dataset)
 
-![Transfer heatmaps](hallucination-detector/results/transfer_heatmaps.png)
+| Plot | Description |
+|------|-------------|
+| Transfer matrix (AUROC and F1) | Train → eval heatmaps |
+| In-domain vs transfer | Bar chart by training dataset |
 
-**In-domain vs average transfer AUROC** (by training dataset)
+<img src="hallucination-detector/results/transfer_heatmaps.png" width="700" alt="Transfer matrix heatmaps (AUROC and F1)" />
 
-![In-domain vs transfer](hallucination-detector/results/transfer_in_domain_vs_transfer.png)
+<img src="hallucination-detector/results/transfer_in_domain_vs_transfer.png" width="500" alt="In-domain vs average transfer AUROC" />
 
-**Main evaluation notebook:** [`hallucination-detector/evaluation.ipynb`](hallucination-detector/evaluation.ipynb) — full reproducible evaluation (datasets, features, transfer matrix, seeds, ablations). Run on Colab with GPU; set `PROJECT_DIR` and HuggingFace token.
+### LLM comparison (opt-125m vs Llama 3.1 8B)
 
-*To regenerate plots locally:* `cd hallucination-detector && python scripts/plot_transfer_results.py` (uses `results/transfer_matrix_seeded.csv`).
+The [evaluation notebook](hallucination-detector/evaluation.ipynb) produces two result sets:
+
+| Model | Output CSV | Notes |
+|-------|------------|--------|
+| **facebook/opt-125m** | `results/transfer_matrix_seeded.csv` | Lightweight baseline; fast on CPU/small GPU. |
+| **meta-llama/Llama-3.1-8B** (4-bit) | `results/transfer_matrix_seeded_llama8b.csv` | Optional second run in the notebook; requires GPU and HF token with Llama access. |
+
+The same plots (heatmaps, in-domain vs transfer) can be generated for each:
+
+```bash
+cd hallucination-detector
+# Baseline (opt-125m)
+python scripts/plot_transfer_results.py --csv results/transfer_matrix_seeded.csv
+# Llama 8B (after running the Llama section in the notebook)
+python scripts/plot_transfer_results.py --csv results/transfer_matrix_seeded_llama8b.csv --results-dir results
+```
+
+Comparing the two: Llama 8B typically gives stronger in-domain and transfer AUROC than opt-125m; the geometric probe benefits from better hidden-state structure in the larger model.
+
+---
+
+**Main evaluation notebook:** [hallucination-detector/evaluation.ipynb](hallucination-detector/evaluation.ipynb) — full reproducible evaluation (datasets, features, transfer matrix with 3 seeds, ablations). Run on Colab with GPU; set `PROJECT_DIR` and HuggingFace token.
+
+**Regenerate plots:** `cd hallucination-detector && python scripts/plot_transfer_results.py` (uses `results/transfer_matrix_seeded.csv` by default).
 
 ---
 
