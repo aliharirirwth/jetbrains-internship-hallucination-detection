@@ -1,5 +1,3 @@
-"""Skip-gram training pair generator with subsampling and negative sampling via noise table."""
-
 from __future__ import annotations
 
 from typing import Iterator
@@ -10,7 +8,11 @@ from .vocab import Vocabulary
 
 
 class SkipGramDataset:
-    """Yields (center_idx, context_idx, [neg_1, ..., neg_k]) with subsampling and dynamic window."""
+    """Iterator of (center_idx, context_idx, neg_indices) with subsampling and dynamic window.
+
+    Applies Mikolov subsampling, then for each kept (center, context) draws
+    negatives from the vocabulary noise table (unigram^3/4).
+    """
 
     def __init__(
         self,
@@ -31,7 +33,12 @@ class SkipGramDataset:
         self._table_len = len(self._table)
 
     def __iter__(self) -> Iterator[tuple[int, int, list[int]]]:
-        """Apply subsampling, then for each kept position yield (center_idx, context_idx, neg_indices)."""
+        """Iterate over training triples with subsampling and negative sampling.
+
+        Yields:
+            Tuples (center_idx, context_idx, neg_indices) where neg_indices
+            has length neg_samples and excludes center and context.
+        """
         # Subsample: keep each token with prob subsample_prob(word)
         kept: list[tuple[int, int]] = []  # (position, word_idx)
         for i, w in enumerate(self.tokens):
@@ -40,7 +47,6 @@ class SkipGramDataset:
             if self.rng.random() < self.vocab.subsample_prob(w, self.subsample_t):
                 kept.append((i, self.vocab.word2idx[w]))
 
-        V = self.vocab.size
         for pos, center_idx in kept:
             # Dynamic window: sample actual window in [1, window_size]
             win = self.rng.integers(1, self.window_size + 1)

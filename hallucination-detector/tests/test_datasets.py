@@ -1,4 +1,3 @@
-"""Test dataset loaders and schema."""
 import sys
 from pathlib import Path
 
@@ -11,8 +10,10 @@ from src.datasets.base import HallucinationSample
 from src.datasets.utils import validate_schema
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("loader_cls", [HaluEvalDataset, MedHalluDataset])
 def test_loader_returns_samples(loader_cls):
+    print(f"\n  Loading {loader_cls.__name__} from HuggingFace (may take 1-5 min)...", flush=True)
     loader = loader_cls()
     try:
         samples = loader.load()
@@ -24,7 +25,9 @@ def test_loader_returns_samples(loader_cls):
         assert hasattr(s, "question") and hasattr(s, "answer") and hasattr(s, "label") and hasattr(s, "dataset")
 
 
+@pytest.mark.slow
 def test_halueval_schema():
+    print("\n  Loading HaluEval from HuggingFace (may take 1-5 min)...", flush=True)
     loader = HaluEvalDataset()
     try:
         samples = loader.load()

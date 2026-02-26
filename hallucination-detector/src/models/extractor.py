@@ -1,5 +1,3 @@
-"""Hidden state extraction from an LLM (transformers). Supports 4-bit quantization and pooling strategies."""
-
 from __future__ import annotations
 
 import re
@@ -22,12 +20,23 @@ except ImportError:
 
 
 def _short_name(model_name: str) -> str:
-    """Short name for file naming (e.g. meta-llama/Llama-3.1-8B -> Llama-3.1-8B)."""
+    """Produce a short name for file naming (e.g. meta-llama/Llama-3.1-8B -> Llama-3.1-8B).
+
+    Args:
+        model_name: Full model name, possibly with org/ prefix.
+
+    Returns:
+        Sanitized string with slashes and spaces replaced by underscores.
+    """
     return re.sub(r"[/\s]", "_", model_name.split("/")[-1] if "/" in model_name else model_name)
 
 
 class HiddenStateExtractor:
-    """Load a causal LM, run forward with output_hidden_states=True, return selected layer representations."""
+    """Extract hidden states from a causal LM for (question, answer) pairs.
+
+    Loads the model with output_hidden_states=True and returns selected layer
+    representations with configurable pooling (mean, last_token, answer_mean).
+    """
 
     def __init__(self, model_name: str, config: dict[str, Any]):
         if torch is None or AutoModelForCausalLM is None:
@@ -59,7 +68,15 @@ class HiddenStateExtractor:
         self.device = next(self.model.parameters()).device
 
     def _tokenize_qa(self, question: str, answer: str) -> tuple[Any, int, int]:
-        """Return input_ids, answer_start_ix, answer_end_ix (token indices for answer span)."""
+        """Tokenize "Question: {q}\nAnswer: {a}" and locate answer span.
+
+        Args:
+            question: Question text.
+            answer: Answer text.
+
+        Returns:
+            Tuple (encoding_dict, answer_start_ix, answer_end_ix) with token indices for the answer span.
+        """
         # Format: "Question: {q}\nAnswer: {a}" so we can find answer token range
         text = f"Question: {question}\nAnswer: {answer}"
         enc = self.tokenizer(
@@ -89,9 +106,16 @@ class HiddenStateExtractor:
         layers: list[int],
         pooling: str | None = None,
     ) -> dict[int, np.ndarray]:
-        """
-        Returns dict mapping layer_index -> feature vector (hidden_dim,).
-        pooling: "mean" | "last_token" | "answer_mean"
+        """Extract hidden states for one (question, answer) and pool per layer.
+
+        Args:
+            question: Question text.
+            answer: Answer text.
+            layers: Layer indices to extract (0-based or negative from end).
+            pooling: One of "mean", "last_token", "answer_mean"; overrides config if set.
+
+        Returns:
+            Dict mapping layer_index -> pooled feature vector (hidden_dim,).
         """
         pool = pooling or self.pooling
         enc, answer_start_ix, answer_end_ix = self._tokenize_qa(question, answer)
@@ -127,11 +151,21 @@ class HiddenStateExtractor:
         batch_size: int = 16,
         save_path: str | Path | None = None,
         dataset_name: str | None = None,
+        show_progress: bool = True,
     ) -> np.ndarray:
-        """
-        Process samples in batches. Optionally save features to disk incrementally.
-        Returns stacked hidden states for the last layer only (for compatibility);
-        full per-layer arrays are saved if save_path is set.
+        """Process samples in batches and optionally save per-layer features to disk.
+
+        Args:
+            samples: List of HallucinationSample (question, answer, label).
+            layers: Layer indices to extract; defaults from config.
+            batch_size: Number of samples per forward pass.
+            save_path: If set, write per-layer .npy arrays and labels incrementally.
+            dataset_name: Used in saved filenames when save_path is set.
+            show_progress: If True, show tqdm progress bar with ETA and elapsed time.
+
+        Returns:
+            Stacked hidden states for the last layer only (for compatibility);
+            full per-layer arrays are written to save_path when provided.
         """
         layers = layers or self.config.get("layers_to_extract", [-1])
         save_path = Path(save_path) if save_path else None
@@ -144,7 +178,18 @@ class HiddenStateExtractor:
         if not samples:
             raise ValueError("extract_batch called with 0 samples; load datasets first (01/02) and ensure they return samples.")
 
-        for start in tqdm(range(0, len(samples), batch_size), desc="extract"):
+        n_batches = (len(samples) + batch_size - 1) // batch_size
+        batch_range = range(0, len(samples), batch_size)
+        if show_progress:
+            batch_range = tqdm(
+                batch_range,
+                desc="extract",
+                unit=" batch",
+                total=n_batches,
+                dynamic_ncols=True,
+                bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]",
+            )
+        for start in batch_range:
             batch = samples[start : start + batch_size]
             for s in batch:
                 try:

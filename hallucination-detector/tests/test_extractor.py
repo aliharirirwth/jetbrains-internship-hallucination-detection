@@ -1,4 +1,3 @@
-"""Test hidden state extractor with a small model (e.g. facebook/opt-125m)."""
 import sys
 from pathlib import Path
 
@@ -7,7 +6,6 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.datasets.base import HallucinationSample
 from src.models import HiddenStateExtractor
 
 
@@ -21,7 +19,9 @@ def small_config():
     }
 
 
+@pytest.mark.slow
 def test_extractor_with_small_model(small_config):
+    print("\n  Loading facebook/opt-125m from HuggingFace (may take 1-2 min)...", flush=True)
     try:
         extractor = HiddenStateExtractor("facebook/opt-125m", small_config)
     except Exception as e:
@@ -45,7 +45,9 @@ def test_extractor_with_small_model(small_config):
     assert not np.allclose(out[-1], out2[-1])
 
 
+@pytest.mark.slow
 def test_extractor_layer_indexing(small_config):
+    print("\n  Loading facebook/opt-125m from HuggingFace (may take 1-2 min)...", flush=True)
     try:
         extractor = HiddenStateExtractor("facebook/opt-125m", small_config)
     except Exception as e:

@@ -1,14 +1,17 @@
-"""Skip-gram model: W_in (center), W_out (context); forward pass only (no gradients here)."""
-
 from __future__ import annotations
-
-from typing import List
 
 import numpy as np
 
 
 def sigmoid(x: np.ndarray) -> np.ndarray:
-    """Numerically stable sigmoid."""
+    """Numerically stable sigmoid to avoid overflow for large |x|.
+
+    Args:
+        x: Input array (any shape).
+
+    Returns:
+        Array same shape as x with values in (0, 1).
+    """
     return np.where(
         x >= 0,
         1.0 / (1.0 + np.exp(-x)),
@@ -17,7 +20,10 @@ def sigmoid(x: np.ndarray) -> np.ndarray:
 
 
 class SkipGram:
-    """Two weight matrices (no weight tying). W_in for center, W_out for context."""
+    """Skip-gram model with two weight matrices (no weight tying).
+
+    W_in: center word embeddings; W_out: context/negative word embeddings.
+    """
 
     def __init__(self, vocab_size: int, embedding_dim: int = 100, seed: int = 42):
         rng = np.random.default_rng(seed)
@@ -36,7 +42,17 @@ class SkipGram:
         context: int,
         negatives: list[int],
     ) -> tuple[float, np.ndarray]:
-        """Compute positive score (scalar) and negative scores (array of K scalars)."""
+        """Compute positive and negative dot-product scores.
+
+        Args:
+            center: Center word index.
+            context: Context word index.
+            negatives: List of K negative word indices.
+
+        Returns:
+            Tuple of (pos_score, neg_scores): pos_score is v_c·v_o; neg_scores
+            is array of v_c·v_k for each negative k.
+        """
         v_c = self.W_in[center]   # (D,)
         v_o = self.W_out[context]  # (D,)
         pos_score = float(np.dot(v_c, v_o))

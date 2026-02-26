@@ -1,5 +1,3 @@
-"""Training loop: SGD over SkipGramDataset, optional LR decay, checkpoints per epoch."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -25,9 +23,24 @@ def train(
     log_every: int = 10_000,
     save_dir: str | None = None,
 ) -> list[tuple[int, float]]:
-    """
-    SGD: one (center, context, negatives) at a time. Optionally decay LR linearly to min_lr.
-    Returns list of (step, loss) for logging. Saves checkpoints every epoch if save_dir set.
+    """Run SGD training on SkipGramDataset.
+
+    Updates model one (center, context, negatives) at a time. Optionally applies
+    linear LR decay to min_lr over epochs. Saves checkpoints every epoch if save_dir set.
+
+    Args:
+        dataset: SkipGramDataset iterator.
+        model: SkipGram model to train.
+        vocab: Vocabulary (for checkpointing).
+        learning_rate: Initial learning rate.
+        min_lr: Minimum learning rate when using schedule.
+        epochs: Number of passes over the dataset.
+        lr_schedule: If True, decay LR linearly to min_lr.
+        log_every: Log loss every this many steps.
+        save_dir: If set, save W_in, W_out, vocab per epoch.
+
+    Returns:
+        List of (step, loss) for logging.
     """
     history: list[tuple[int, float]] = []
     total_steps = 0

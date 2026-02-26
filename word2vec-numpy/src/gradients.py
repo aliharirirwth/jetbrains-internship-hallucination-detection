@@ -1,8 +1,6 @@
-"""Exact analytic gradients for SGNS (no autograd). See README for derivation."""
-
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import Tuple
 
 import numpy as np
 
@@ -18,13 +16,22 @@ def gradients(
     pos_score: float,
     neg_scores: np.ndarray,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Compute ∂J/∂W_in and ∂J/∂W_out (gradient of objective J we maximize).
-    So for SGD we do: W -= lr * (-grad) = W + lr * grad (ascend on J).
+    """Compute gradients of the SGNS objective J w.r.t. W_in and W_out.
+
+    For SGD we ascend on J: W += lr * grad.
+
+    Args:
+        center: Center word index.
+        context: Context (positive) word index.
+        negatives: List of negative word indices.
+        W_in: Center embedding matrix (V, D).
+        W_out: Context embedding matrix (V, D).
+        pos_score: Scalar v_c·v_o.
+        neg_scores: Array of v_c·v_k for each negative k.
 
     Returns:
-        dW_in: (V, D) array, only row center is non-zero.
-        dW_out: (V, D) array, rows context and neg indices are non-zero.
+        Tuple (dW_in, dW_out): dW_in is (V, D), only row center non-zero;
+        dW_out is (V, D), rows for context and negatives non-zero.
     """
     v_c = W_in[center]
     v_o = W_out[context]

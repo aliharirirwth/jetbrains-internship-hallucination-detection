@@ -1,5 +1,3 @@
-"""AUROC, F1, accuracy, precision, recall, ECE."""
-
 from __future__ import annotations
 
 import numpy as np
@@ -21,7 +19,16 @@ except ImportError:
 
 
 def expected_calibration_error(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int = 10) -> float:
-    """ECE: average gap between confidence and accuracy per bin."""
+    """Expected calibration error: average gap between confidence and accuracy per bin.
+
+    Args:
+        y_true: Ground truth binary labels.
+        y_prob: Predicted probabilities (or array with positive-class column).
+        n_bins: Number of probability bins for ECE.
+
+    Returns:
+        Scalar ECE in [0, 1]; 0 if no samples.
+    """
     y_true = np.asarray(y_true).ravel()
     y_prob = np.asarray(y_prob).ravel()
     if len(y_prob.shape) > 1:
@@ -45,7 +52,16 @@ def compute_all_metrics(
     y_prob: np.ndarray,
     threshold: float = 0.5,
 ) -> dict[str, float]:
-    """Return dict with auroc, f1, accuracy, precision, recall, ece, n_samples, positive_rate."""
+    """Compute classification metrics and calibration.
+
+    Args:
+        y_true: Ground truth binary labels.
+        y_prob: Predicted probabilities (n_samples,) or (n_samples, 2); positive class used.
+        threshold: Decision threshold for F1, accuracy, precision, recall.
+
+    Returns:
+        Dict with auroc, f1, accuracy, precision, recall, ece, n_samples, positive_rate.
+    """
     y_true = np.asarray(y_true).ravel()
     y_prob = np.asarray(y_prob)
     if y_prob.ndim > 1:
@@ -56,13 +72,15 @@ def compute_all_metrics(
         "n_samples": float(len(y_true)),
         "positive_rate": float(np.mean(y_true)),
     }
-    if roc_auc_score is not None:
+    # AUROC undefined when only one class in y_true (avoids UndefinedMetricWarning)
+    n_classes = len(np.unique(y_true))
+    if roc_auc_score is not None and n_classes >= 2:
         try:
             out["auroc"] = float(roc_auc_score(y_true, y_prob))
         except Exception:
             out["auroc"] = 0.5
     else:
-        out["auroc"] = 0.5
+        out["auroc"] = float("nan") if n_classes < 2 else 0.5
     if f1_score is not None:
         out["f1"] = float(f1_score(y_true, y_pred, zero_division=0))
     else:

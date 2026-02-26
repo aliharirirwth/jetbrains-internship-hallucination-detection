@@ -1,30 +1,33 @@
 #!/usr/bin/env python3
-"""Layer, feature, and pooling ablations; save results to results/."""
 import argparse
 import sys
-import yaml
+import time
 from pathlib import Path
+
+import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
 import pandas as pd
-
 from src.evaluation.metrics import compute_all_metrics
-from src.evaluation.transfer import _compute_geometric_features, _mahalanobis_stats, run_transfer_experiment
+from src.evaluation.transfer import _compute_geometric_features, _mahalanobis_stats
 from src.models.probe import HallucinationProbe
+from tqdm import tqdm
 
 
 def main():
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(description="Run feature and layer ablations; save CSVs to results/.")
     ap.add_argument("--config", default="configs/config.yaml")
     ap.add_argument("--probe", default="results/probe_halueval.pkl")
     ap.add_argument("--features_dir", default=None)
     ap.add_argument("--train_dataset", default="halueval")
     ap.add_argument("--eval_datasets", nargs="+", default=["halueval", "medhallu"])
     ap.add_argument("--model_short", default="Llama-3.1-8B")
+    ap.add_argument("--quiet", action="store_true", help="Minimal output (no tqdm).")
     args = ap.parse_args()
 
+    total_start = time.perf_counter()
     root = Path(__file__).resolve().parent.parent
     with open(root / args.config) as f:
         config = yaml.safe_load(f)
@@ -50,8 +53,11 @@ def main():
         sys.exit(1)
 
     # 1) Feature ablation: leave-one-out
+    if not args.quiet:
+        print("Feature ablation (leave-one-out)...")
     feature_ablation = []
-    for drop in ["use_mahalanobis", "use_cosine_sim", "use_norm", "use_layer_diff"]:
+    drop_list = ["use_mahalanobis", "use_cosine_sim", "use_norm", "use_layer_diff"]
+    for drop in tqdm(drop_list, desc="feature ablation", unit="config", disable=args.quiet):
         cfg = {**feats_config, drop: False}
         X = _compute_geometric_features(hidden_train, train_labels, cfg)
         probe = HallucinationProbe(probe_type="logistic", C=1.0, max_iter=1000)
@@ -73,8 +79,10 @@ def main():
         print("Feature ablation -> results/ablation_features.csv")
 
     # 2) Layer ablation: single-layer probes (if multiple layers extracted)
+    if not args.quiet:
+        print("Layer ablation...")
     layer_ablation = []
-    for li in layers:
+    for li in tqdm(layers, desc="layer ablation", unit="layer", disable=args.quiet):
         path = features_dir / f"{args.train_dataset}_{args.model_short}_layer{li}_{pooling}.npy"
         if not path.exists():
             continue
@@ -98,7 +106,8 @@ def main():
         pd.DataFrame(layer_ablation).to_csv(results_dir / "ablation_layers.csv", index=False)
         print("Layer ablation -> results/ablation_layers.csv")
 
-    print("Ablations done.")
+    total_elapsed = time.perf_counter() - total_start
+    print(f"Ablations done. Total time: {total_elapsed:.1f}s")
 
 
 if __name__ == "__main__":

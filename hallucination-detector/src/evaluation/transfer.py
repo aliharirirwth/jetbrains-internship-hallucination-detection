@@ -1,7 +1,6 @@
-"""Cross-dataset transfer: train on one dataset, evaluate on others."""
-
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +9,6 @@ import pandas as pd
 
 from ..features.geometric import (
     build_feature_vector,
-    cosine_similarity_features,
     layer_difference,
     mahalanobis_features,
     representation_norm,
@@ -20,7 +18,15 @@ from .metrics import compute_all_metrics
 
 
 def _mahalanobis_stats(hidden: np.ndarray, labels: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Compute mean and inv_cov for class 0 and 1 from (N, dim) hidden and labels."""
+    """Compute class means and inverse covariances for binary labels.
+
+    Args:
+        hidden: Hidden states (N, dim).
+        labels: Binary labels (N,) with 0 = faithful, 1 = hallucination.
+
+    Returns:
+        Tuple (mean0, mean1, inv_cov0, inv_cov1) for the two classes.
+    """
     dim = hidden.shape[1]
     mask0 = labels == 0
     mask1 = labels == 1
@@ -39,7 +45,20 @@ def _compute_geometric_features(
     config: dict[str, Any],
     mahalanobis_stats: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None = None,
 ) -> np.ndarray:
-    """Build feature matrix. If mahalanobis_stats is None, compute from given labels (train); else use provided (eval)."""
+    """Build geometric feature matrix for all samples.
+
+    If mahalanobis_stats is None, computes them from labels (training); otherwise
+    uses provided stats (evaluation/transfer).
+
+    Args:
+        hidden_by_layer: Dict layer_index -> (N, hidden_dim) per layer.
+        labels: Binary labels (N,) for Mahalanobis when stats are computed.
+        config: Feature flags (use_mahalanobis, use_cosine_sim, use_norm, use_layer_diff).
+        mahalanobis_stats: Optional (mean0, mean1, inv_cov0, inv_cov1) for eval.
+
+    Returns:
+        Array of shape (N, n_features) with concatenated geometric features.
+    """
     use_mahalanobis = config.get("use_mahalanobis", True)
     use_cosine = config.get("use_cosine_sim", True)
     use_norm = config.get("use_norm", True)
@@ -49,7 +68,6 @@ def _compute_geometric_features(
         return np.zeros((0, 0))
 
     N = hidden_by_layer[layers[0]].shape[0]
-    dim = hidden_by_layer[layers[0]].shape[1]
     if mahalanobis_stats is None:
         mean0, mean1, inv_cov0, inv_cov1 = _mahalanobis_stats(hidden_by_layer[layers[-1]], labels)
     else:
@@ -82,10 +100,22 @@ def run_transfer_experiment(
     model_short: str = "Llama-3.1-8B",
     random_state: int = 42,
 ) -> pd.DataFrame:
-    """
-    Train probe on train_dataset, evaluate on all eval_datasets.
-    Expects pre-extracted .npy features under features_dir.
-    Returns DataFrame: train_dataset | eval_dataset | auroc | f1 | n_train | n_eval | layer | pooling
+    """Train a probe on one dataset and evaluate on multiple eval datasets.
+
+    Expects pre-extracted .npy features under features_dir (per dataset and layer).
+
+    Args:
+        train_dataset: Name of dataset used for training the probe.
+        eval_datasets: List of dataset names to evaluate on.
+        config: Model/feature config (e.g. from config.yaml).
+        features_dir: Directory containing *_labels.npy and *_layer*_*.npy files.
+        layers: Layer indices to use; defaults from config.
+        pooling: Pooling strategy (e.g. mean).
+        model_short: Short model name for file lookup.
+        random_state: Random seed for probe training.
+
+    Returns:
+        DataFrame with columns train_dataset, eval_dataset, auroc, f1, n_train, n_eval, layer, pooling.
     """
     features_dir = Path(features_dir)
     layers = layers or config.get("model", {}).get("layers_to_extract", [-1])
@@ -93,6 +123,14 @@ def run_transfer_experiment(
 
     # Load train data
     train_labels = np.load(features_dir / f"{train_dataset}_labels.npy")
+    if len(np.unique(train_labels)) < 2:
+        warnings.warn(
+            f"Train dataset '{train_dataset}' has only one class (e.g. all hallucination). "
+            "Skipping probe fit; use balanced data or another train dataset.",
+            UserWarning,
+            stacklevel=2,
+        )
+        return pd.DataFrame()
     hidden_train: dict[int, np.ndarray] = {}
     for li in layers:
         path = features_dir / f"{train_dataset}_{model_short}_layer{li}_{pooling}.npy"
@@ -151,7 +189,20 @@ def run_full_transfer_matrix(
     results_dir: str | Path,
     model_short: str = "Llama-3.1-8B",
 ) -> pd.DataFrame:
-    """Run all N×N (train, eval) combinations; save results to results/transfer_matrix.csv."""
+    """Run full N×N transfer matrix: train on each dataset, evaluate on all.
+
+    Saves combined results to results_dir/transfer_matrix.csv.
+
+    Args:
+        all_datasets: List of dataset names (train and eval).
+        config: Model/feature config.
+        features_dir: Directory with pre-extracted .npy features.
+        results_dir: Directory to write transfer_matrix.csv.
+        model_short: Short model name for file lookup.
+
+    Returns:
+        DataFrame with all (train_dataset, eval_dataset, auroc, f1, ...) rows.
+    """
     results_dir = Path(results_dir)
     results_dir.mkdir(parents=True, exist_ok=True)
     all_rows = []

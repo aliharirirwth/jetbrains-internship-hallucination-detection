@@ -1,5 +1,3 @@
-"""Med-HALT loader (ACL/EMNLP 2023). openlifescienceai/Med-HALT, multiple subsets."""
-
 from __future__ import annotations
 
 from .base import BaseDataset, HallucinationSample

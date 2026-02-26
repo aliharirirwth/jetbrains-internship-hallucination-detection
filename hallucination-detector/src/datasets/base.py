@@ -1,5 +1,3 @@
-"""Abstract base class and schema for hallucination datasets."""
-
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -11,7 +9,15 @@ import pandas as pd
 
 @dataclass
 class HallucinationSample:
-    """Single sample: question, model answer, binary label, source dataset, optional metadata."""
+    """Single sample for hallucination detection.
+
+    Attributes:
+        question: Input question or prompt.
+        answer: Model answer (faithful or hallucinated).
+        label: 1 = hallucination, 0 = faithful.
+        dataset: Source dataset name.
+        metadata: Optional extra fields.
+    """
     question: str
     answer: str
     label: int  # 1 = hallucination, 0 = faithful
@@ -24,17 +30,25 @@ class HallucinationSample:
 
 
 class BaseDataset(ABC):
-    """Load and normalize a hallucination dataset to HallucinationSample list."""
+    """Abstract base for loading and normalizing a hallucination dataset to HallucinationSample list."""
 
     name: str = "base"
 
     @abstractmethod
     def load(self) -> list[HallucinationSample]:
-        """Load from source (e.g. HuggingFace) and return list of HallucinationSample."""
+        """Load from source (e.g. HuggingFace) and return list of HallucinationSample.
+
+        Returns:
+            List of HallucinationSample with question, answer, label, dataset.
+        """
         ...
 
     def get_dataframe(self) -> pd.DataFrame:
-        """Return a DataFrame with columns question, answer, label, dataset."""
+        """Return a DataFrame with columns question, answer, label, dataset.
+
+        Returns:
+            One row per sample.
+        """
         samples = self.load()
         return pd.DataFrame(
             [
@@ -49,7 +63,11 @@ class BaseDataset(ABC):
         )
 
     def label_distribution(self) -> dict[str, int]:
-        """Return counts per label (e.g. {'0': n_faithful, '1': n_hallucination})."""
+        """Return counts per label.
+
+        Returns:
+            Dict mapping label string (e.g. '0', '1') to count.
+        """
         samples = self.load()
         counts: dict[str, int] = {}
         for s in samples:

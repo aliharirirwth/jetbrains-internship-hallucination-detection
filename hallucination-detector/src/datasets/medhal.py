@@ -1,5 +1,3 @@
-"""MedHal loader. Medical hallucination dataset (2025). Normalize to HallucinationSample."""
-
 from __future__ import annotations
 
 from .base import BaseDataset, HallucinationSample

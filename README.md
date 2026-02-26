@@ -38,6 +38,24 @@ python scripts/02_preprocess.py
 - **T4 (16GB)** — Use small model (e.g. `facebook/opt-125m`) and 4-bit if needed.
 - Runs on **CUDA/GPU** (e.g. Google Colab).
 
+## Evaluation results (hallucination detector)
+
+Transfer matrix: train a probe on one dataset, evaluate on all (HaluEval, MedHallu, Med-HALT, MedHal). Example results below (opt-125m, 2k samples per dataset; Med-HALT has only one class so it is skipped as train set and AUROC is undefined when evaluating on it).
+
+**Transfer matrix (AUROC and F1)**
+
+![Transfer heatmaps](hallucination-detector/results/transfer_heatmaps.png)
+
+**In-domain vs average transfer AUROC** (by training dataset)
+
+![In-domain vs transfer](hallucination-detector/results/transfer_in_domain_vs_transfer.png)
+
+**Main evaluation notebook:** [`hallucination-detector/evaluation.ipynb`](hallucination-detector/evaluation.ipynb) — full reproducible evaluation (datasets, features, transfer matrix, seeds, ablations). Run on Colab with GPU; set `PROJECT_DIR` and HuggingFace token.
+
+*To regenerate plots locally:* `cd hallucination-detector && python scripts/plot_transfer_results.py` (uses `results/transfer_matrix_seeded.csv`).
+
+---
+
 ## Task summary
 
 1. **Word2Vec**: Implement SGNS in NumPy (forward, loss, gradients, SGD); evaluate with Google word analogies; document gradient derivation and design choices.

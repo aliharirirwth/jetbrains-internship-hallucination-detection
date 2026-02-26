@@ -1,5 +1,3 @@
-"""Word analogy evaluation using Google questions-words.txt; semantic/syntactic accuracy."""
-
 from __future__ import annotations
 
 import argparse
@@ -20,7 +18,15 @@ def download_analogies(path: str | Path = "questions-words.txt") -> Path:
 
 
 def load_analogies(path: str | Path) -> tuple[list[str], list[tuple[str, str, str, str]]]:
-    """Parse questions-words.txt. Returns (categories, list of (a, b, c, d) tuples)."""
+    """Parse questions-words.txt format.
+
+    Args:
+        path: Path to the questions-words file.
+
+    Returns:
+        Tuple (categories, quadruples): categories are section headers; quadruples
+        are (a, b, c, d) analogy tuples.
+    """
     path = Path(path)
     categories: list[str] = []
     quadruples: list[tuple[str, str, str, str]] = []
@@ -39,7 +45,14 @@ def load_analogies(path: str | Path) -> tuple[list[str], list[tuple[str, str, st
 
 
 def load_analogies_by_section(path: str | Path) -> dict[str, list[tuple[str, str, str, str]]]:
-    """Map each section header to the list of (a, b, c, d) analogies in that section."""
+    """Load questions-words.txt and group analogies by section.
+
+    Args:
+        path: Path to the questions-words file.
+
+    Returns:
+        Dict mapping section header to list of (a, b, c, d) tuples for a:b::c:d.
+    """
     path = Path(path)
     by_section: dict[str, list[tuple[str, str, str, str]]] = {}
     current = ""
@@ -63,7 +76,21 @@ def analogy_accuracy(
     analogies: list[tuple[str, str, str, str]],
     exclude_query: bool = True,
 ) -> float:
-    """For each a:b::c:? find argmax cosine(W[a]-W[b]+W[c]). Return accuracy."""
+    """Compute word-analogy accuracy (a:b::c:? via argmax cosine similarity).
+
+    For each (a, b, c, d) we compute v = W[a]-W[b]+W[c], then predict d as
+    argmax cosine similarity with v (optionally excluding a, b, c).
+
+    Args:
+        W: Embedding matrix (V, D), typically W_in.
+        word2idx: Word to index mapping.
+        idx2word: Index to word mapping.
+        analogies: List of (a, b, c, d) quadruples.
+        exclude_query: If True, exclude a, b, c from the candidate set.
+
+    Returns:
+        Fraction of analogies where prediction equals d (0.0 if no valid analogies).
+    """
     W_norm = W / (np.linalg.norm(W, axis=1, keepdims=True) + 1e-10)
     correct = 0
     total = 0
@@ -91,7 +118,17 @@ def run_evaluation(
     idx2word: dict[int, str],
     analogies_path: str | Path | None = None,
 ) -> dict[str, float]:
-    """Download questions-words if needed, run analogy accuracy by category. Return dict category -> accuracy."""
+    """Download questions-words if needed and run analogy accuracy per category.
+
+    Args:
+        W_in: Center embedding matrix (V, D).
+        word2idx: Word to index mapping.
+        idx2word: Index to word mapping.
+        analogies_path: Optional path to questions-words.txt; downloaded if missing.
+
+    Returns:
+        Dict mapping category name to accuracy (and "semantic", "syntactic" aggregates).
+    """
     path = Path(analogies_path) if analogies_path else download_analogies()
     if not path.exists():
         download_analogies(path)

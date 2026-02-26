@@ -1,4 +1,3 @@
-"""Download and extract text8 corpus to data/text8."""
 import time
 import urllib.request
 import zipfile

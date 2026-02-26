@@ -1,5 +1,3 @@
-"""Geometric probe: logistic regression or MLP on geometric features."""
-
 from __future__ import annotations
 
 import pickle
@@ -19,7 +17,11 @@ except ImportError:
 
 
 class HallucinationProbe:
-    """Classifier on geometric feature vectors. Standardize features; fit probe; save/load with scaler."""
+    """Classifier on geometric feature vectors for hallucination detection.
+
+    Standardizes features, fits a logistic or MLP probe, and supports save/load
+    with the fitted scaler.
+    """
 
     def __init__(self, probe_type: str = "logistic", **kwargs: Any):
         if StandardScaler is None or LogisticRegression is None:
@@ -31,6 +33,12 @@ class HallucinationProbe:
         self.feature_importances_: np.ndarray | None = None
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
+        """Fit the probe (and scaler) on geometric features.
+
+        Args:
+            X: Feature matrix (n_samples, n_features).
+            y: Binary labels (n_samples,) with 0 = faithful, 1 = hallucination.
+        """
         X = np.asarray(X, dtype=np.float64)
         y = np.asarray(y, dtype=np.int64)
         X_scaled = self.scaler.fit_transform(X)
@@ -55,11 +63,24 @@ class HallucinationProbe:
             self.feature_importances_ = np.abs(self.clf.coef_).ravel()
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
+        """Predict class probabilities.
+
+        Args:
+            X: Feature matrix (n_samples, n_features).
+
+        Returns:
+            Array of shape (n_samples, 2) with [P(0), P(1)].
+        """
         X = np.asarray(X, dtype=np.float64)
         X_scaled = self.scaler.transform(X)
         return self.clf.predict_proba(X_scaled)
 
     def save(self, path: str | Path) -> None:
+        """Save probe and scaler to disk (pickle).
+
+        Args:
+            path: Output file path (.pkl).
+        """
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("wb") as f:
@@ -70,6 +91,14 @@ class HallucinationProbe:
 
     @classmethod
     def load(cls, path: str | Path) -> "HallucinationProbe":
+        """Load probe and scaler from pickle file.
+
+        Args:
+            path: Path to .pkl file.
+
+        Returns:
+            Restored HallucinationProbe instance.
+        """
         path = Path(path)
         with path.open("rb") as f:
             data = pickle.load(f)

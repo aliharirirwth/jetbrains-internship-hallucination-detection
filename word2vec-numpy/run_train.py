@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""Build vocab, dataset, train Skip-gram, save checkpoints. Run from word2vec-numpy/."""
 import re
 import sys
 from pathlib import Path
 
 # Add src to path when running from repo root or word2vec-numpy/
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from src.vocab import Vocabulary
 from src.dataset import SkipGramDataset
 from src.model import SkipGram
 from src.train import train
+from src.vocab import Vocabulary
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 TEXT_PATH = DATA_DIR / "text8"

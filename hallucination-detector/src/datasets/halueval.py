@@ -1,5 +1,3 @@
-"""HaluEval loader: pminervini/HaluEval. Expands rows with right + hallucinated answer to two samples."""
-
 from __future__ import annotations
 
 from .base import BaseDataset, HallucinationSample

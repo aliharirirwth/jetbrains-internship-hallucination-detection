@@ -1,5 +1,3 @@
-"""Shared preprocessing and schema validation for hallucination datasets."""
-
 from __future__ import annotations
 
 import logging
@@ -15,9 +13,19 @@ def validate_schema(
     dataset_name: str = "dataset",
     warn_imbalance_threshold: float = 0.8,
 ) -> dict[str, bool]:
-    """
-    Check loaded data for common issues. Returns a dict of checks (all True if passed).
-    Logs warnings for: label imbalance, empty strings, duplicate (question, answer), label set.
+    """Check loaded data for common schema and quality issues.
+
+    Logs warnings for label imbalance, empty question/answer, duplicate (question, answer),
+    and non-binary labels.
+
+    Args:
+        samples: List of HallucinationSample to validate.
+        dataset_name: Name used in log messages.
+        warn_imbalance_threshold: Warn if positive rate > this or < (1 - this).
+
+    Returns:
+        Dict of check names to bool (True if passed): no_empty_question, no_empty_answer,
+        binary_labels, label_balance_ok, no_duplicate_qa.
     """
     results: dict[str, bool] = {
         "no_empty_question": True,

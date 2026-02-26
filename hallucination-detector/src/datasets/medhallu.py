@@ -1,5 +1,3 @@
-"""MedHallu loader: UTAustin-AIHealth/MedHallu. Question + ground truth + hallucinated answer → two samples."""
-
 from __future__ import annotations
 
 from .base import BaseDataset, HallucinationSample
@@ -11,10 +9,10 @@ except ImportError:
 
 
 class MedHalluDataset(BaseDataset):
-    """
-    MedHallu: medical QA hallucination benchmark (2025).
-    Splits: pqa_labeled, pqa_artificial. Each row has question, correct answer, hallucinated answer
-    → we emit two samples (label 0 and 1) per row.
+    """MedHallu: medical QA hallucination benchmark (2025).
+
+    Loads splits pqa_labeled and pqa_artificial. Each row has question, correct
+    answer, and hallucinated answer; we emit two samples (label 0 and 1) per row.
     """
 
     name = "medhallu"
@@ -30,7 +28,7 @@ class MedHalluDataset(BaseDataset):
                 continue
             # Can be DatasetDict (splits) or single Dataset; Dataset has .column_names, DatasetDict doesn't
             try:
-                from datasets import DatasetDict, Dataset
+                from datasets import DatasetDict
                 if isinstance(ds, DatasetDict):
                     for split in ds.keys():
                         for row in ds[split]:

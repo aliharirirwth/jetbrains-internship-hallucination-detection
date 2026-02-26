@@ -1,3 +1,4 @@
+from .aggregation import load_labels, load_layer_features
 from .geometric import (
     build_feature_vector,
     cosine_similarity_features,
@@ -6,7 +7,6 @@ from .geometric import (
     mahalanobis_features,
     representation_norm,
 )
-from .aggregation import load_layer_features, load_labels
 
 __all__ = [
     "build_feature_vector",

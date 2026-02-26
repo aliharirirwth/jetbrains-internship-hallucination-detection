@@ -10,10 +10,16 @@ pip install -r requirements.txt
 # For GPU (Colab): pip install bitsandbytes
 ```
 
+## Evaluation notebook
+
+**[evaluation.ipynb](evaluation.ipynb)** — Paper-ready evaluation: download/preprocess data, extract features (2k samples per dataset), run full transfer matrix with multiple seeds, and ablations. Designed for Google Colab (GPU); set `PROJECT_DIR` and `HF_TOKEN`.
+
 ## Pipeline (scripts run from `hallucination-detector/`)
 
+Scripts show **progress (tqdm)** and **elapsed time** by default so reviewers can see what is running. Use `--quiet` or `--no-progress` where supported to reduce output.
+
 ```bash
-# 1. Download datasets
+# 1. Download datasets (progress + time; first run downloads from HuggingFace)
 python scripts/01_download_datasets.py
 
 # 2. Preprocess to common schema
@@ -55,6 +61,15 @@ Fill with AUROC from `results/transfer_matrix.csv` after running the full transf
 
 ## Tests
 
+Run from the **hallucination-detector/** directory (where this README lives):
+
 ```bash
-pytest tests/ -v
+cd hallucination-detector
+
+# Fast tests only (no network/downloads) — returns to prompt in a few seconds
+pytest -m "not slow" -v
+
+# Full suite (dataset loaders + extractor download from HuggingFace; can take 5–10 min)
+# Use -s to see "Loading..." progress so the terminal doesn’t look stuck
+pytest tests/ -v -s
 ```

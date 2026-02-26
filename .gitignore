@@ -23,6 +23,9 @@ env/
 # Data and outputs (optional: remove if you want to track small samples)
 hallucination-detector/data/
 hallucination-detector/results/
+# Keep plot images and example transfer matrix for README / local plot script
+!hallucination-detector/results/*.png
+!hallucination-detector/results/transfer_matrix_seeded.csv
 *.npy
 
 # Pytest

@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-"""Train probe on reference dataset; save probe and scaler to disk."""
 import argparse
 import sys
-import yaml
+import time
 from pathlib import Path
+
+import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
-
-from src.evaluation.transfer import _compute_geometric_features, _mahalanobis_stats
+from src.evaluation.transfer import _compute_geometric_features
 from src.models.probe import HallucinationProbe
 
+
 def main():
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(description="Train probe on reference dataset and save to disk.")
     ap.add_argument("--config", default="configs/config.yaml")
     ap.add_argument("--train", default="halueval")
     ap.add_argument("--features_dir", default=None)
@@ -42,6 +43,8 @@ def main():
         print("No feature files found. Run 03_extract_features.py first.")
         sys.exit(1)
 
+    print("Building features and training probe...")
+    start = time.perf_counter()
     X = _compute_geometric_features(hidden, labels, feats_config)
     probe = HallucinationProbe(
         probe_type=config.get("probe", {}).get("type", "logistic"),
@@ -54,7 +57,8 @@ def main():
         out_path = root / out_path
     out_path.parent.mkdir(parents=True, exist_ok=True)
     probe.save(out_path)
-    print(f"Probe saved to {out_path}")
+    elapsed = time.perf_counter() - start
+    print(f"Probe saved to {out_path} (took {elapsed:.1f}s)")
 
 
 if __name__ == "__main__":
