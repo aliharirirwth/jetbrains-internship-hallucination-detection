@@ -1,0 +1,31 @@
+# Hallucination detector: geometric probe on LLM hidden states.
+# For quick tests use model.name: "facebook/opt-125m" and load_in_4bit: false.
+
+model:
+  name: "meta-llama/Llama-3.1-8B"
+  load_in_4bit: true
+  device: "cuda"
+  layers_to_extract: [-1, -4, -8]
+  pooling: "mean"  # "mean" | "last_token" | "answer_mean"
+
+data:
+  reference_dataset: "halueval"
+  transfer_datasets: ["medhal", "medhallu"]
+  max_samples: 5000
+  test_size: 0.2
+  random_seed: 42
+
+features:
+  use_mahalanobis: true
+  use_cosine_sim: true
+  use_norm: true
+  use_layer_diff: true
+
+probe:
+  type: "logistic"  # "logistic" | "mlp"
+  C: 1.0
+  max_iter: 1000
+
+output:
+  features_dir: "data/features"
+  results_dir: "results"
